@@ -1,7 +1,7 @@
 [project]
 name = "backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "LeadFlow private API with PostgreSQL persistence"
 readme = "README.md"
 authors = [
     { name = "Arkapravo-Ghosh", email = "arkapravoghosh99@gmail.com" }
@@ -17,7 +17,9 @@ dependencies = [
 ]
 
 [project.scripts]
-backend = "backend:main"
+backend = "backend.cli:main"
+leadflow-seed = "backend.seed:main"
+leadflow-openapi = "backend.export_openapi:main"
 
 [build-system]
 requires = ["uv_build>=0.13.0,<0.14.0"]
