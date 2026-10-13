@@ -9,6 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     auth_session_hours: int = Field(default=12, ge=1, le=168)
+    signup_rate_limit: int = Field(default=20, ge=1, le=1000)
     database_url: SecretStr
     backend_api_key: SecretStr = Field(min_length=16)
 

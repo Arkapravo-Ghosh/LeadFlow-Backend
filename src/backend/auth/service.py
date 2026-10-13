@@ -33,6 +33,13 @@ def sign_in(session: Session, data: LoginRequest, now: datetime) -> LoginResult:
     attempt.failures = 0
     if updated_hash:
         user.password_hash = updated_hash
+    result = issue_session(session, user, now)
+    session.commit()
+    return result
+
+
+def issue_session(session: Session, user: User, now: datetime) -> LoginResult:
+    """Stage a session so account creation and its first session commit together."""
     session.execute(delete(AuthSession).where(AuthSession.expires_at <= now))
     token = secrets.token_urlsafe(32)
     expires = now + timedelta(hours=get_settings().auth_session_hours)
@@ -44,7 +51,6 @@ def sign_in(session: Session, data: LoginRequest, now: datetime) -> LoginResult:
             expires_at=expires,
         )
     )
-    session.commit()
     return LoginResult(
         token=token, expires_at=expires, user=UserRead.model_validate(user)
     )

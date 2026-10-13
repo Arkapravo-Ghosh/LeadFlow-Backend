@@ -14,8 +14,16 @@ WINDOW = timedelta(minutes=15)
 MAX_FAILURES = 5
 
 
-def locked_attempt(session: Session, username: str, now: datetime) -> LoginAttempt:
-    key = sha256(username.encode()).hexdigest()
+def locked_attempt(
+    session: Session,
+    subject: str,
+    now: datetime,
+    *,
+    maximum: int = MAX_FAILURES,
+    message: str = "Too many sign-in attempts. Try again in 15 minutes.",
+) -> LoginAttempt:
+    """Lock a hashed subject counter; namespaced registration keys remain separate."""
+    key = sha256(subject.encode()).hexdigest()
     # Expired counters need no historical audit trail; bound table growth.
     session.execute(
         delete(LoginAttempt).where(LoginAttempt.window_start <= now - WINDOW)
@@ -29,7 +37,7 @@ def locked_attempt(session: Session, username: str, now: datetime) -> LoginAttem
         select(LoginAttempt).where(LoginAttempt.subject_hash == key).with_for_update()
     )
     assert attempt is not None
-    if attempt.failures >= MAX_FAILURES:
+    if attempt.failures >= maximum:
         session.commit()
-        raise HTTPException(429, "Too many sign-in attempts. Try again in 15 minutes.")
+        raise HTTPException(429, message)
     return attempt

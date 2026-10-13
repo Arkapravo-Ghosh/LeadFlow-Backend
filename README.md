@@ -4,6 +4,9 @@
 [LeadFlow parent](https://github.com/Arkapravo-Ghosh/LeadFlow) ·
 [Frontend repository](https://github.com/Arkapravo-Ghosh/LeadFlow-Frontend)
 
+Live API: [api.leadflow.arkapravo.in](https://api.leadflow.arkapravo.in/api/v1/health).
+Render CI/CD deploys this repository with Neon PostgreSQL.
+
 The FastAPI service for LeadFlow, using SQLAlchemy, psycopg and PostgreSQL.
 Dependencies and CLI commands are managed with uv; Alembic owns schema migrations.
 The Next.js server calls this API with a private service credential plus the
@@ -23,8 +26,9 @@ docker compose up --build --watch
 ```
 
 Compose supplies the local database URL and credential. FastAPI and PostgreSQL have
-no published host ports. Create an account using private interactive prompts,
-then optionally insert six sample leads and twelve discussions for that account:
+no published host ports. Create an account in the frontend at `/signup`. The
+administrator CLI also supports private interactive provisioning. Optionally
+insert six sample leads and twelve discussions for an existing account:
 
 ```sh
 docker compose exec backend uv run leadflow-create-user
@@ -48,19 +52,24 @@ Uvicorn to Render's `PORT` on `0.0.0.0`.
 | `DATABASE_URL` | Neon PostgreSQL connection string, preserving SSL parameters |
 | `BACKEND_API_KEY` | Private credential of at least 16 characters, shared with Vercel |
 | `AUTH_SESSION_HOURS` | Fixed session lifetime, default 12, range 1–168 |
+| `SIGNUP_RATE_LIMIT` | Registration attempts per source per 15 minutes, default 20, range 1–1000 |
 | `PORT` | Provided by Render; startup falls back to 8000 locally |
 
 See [.env.example](.env.example) and the parent's
 [deployment guide](https://github.com/Arkapravo-Ghosh/LeadFlow/blob/main/docs/deployment.md).
-Provision production accounts privately in the Render shell with
-`uv run leadflow-create-user`. Migrations never create default credentials.
+Users can register through the frontend; `/api/v1/auth/signup` still requires
+the private service key. Registration creates an empty account and its first
+session atomically, with canonical unique usernames and Argon2id passwords.
+The Render shell command `uv run leadflow-create-user` remains available for
+administrator provisioning. Migrations never create default credentials.
 Read the parent’s [authentication guide](https://github.com/Arkapravo-Ghosh/LeadFlow/blob/main/docs/authentication.md)
 for legacy data migration and session behavior. Public interactive API documentation is disabled.
 
 ## Code structure and checks
 
 - `src/backend/main.py`: application factory and readiness route.
-- `src/backend/auth`: password policy, private provisioning, sessions, login limits and routes.
+- `src/backend/auth`: shared account insertion, registration, password policy,
+  private provisioning, sessions, database-backed limits and thin routes.
 - `src/backend/core`: configuration, credential checks, errors and clock.
 - `src/backend/db`: SQLAlchemy metadata, engine and request sessions.
 - `src/backend/leads`: routes, schemas, models, services, queries and follow-up rules.

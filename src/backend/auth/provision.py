@@ -4,12 +4,12 @@ import argparse
 import sys
 from getpass import getpass
 
-from sqlalchemy import select, update
+from sqlalchemy import update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend.auth.models import User
-from backend.auth.passwords import hash_password, normalize_username
+from backend.auth.repository import insert_user
 from backend.db.session import get_engine
 from backend.leads.models import Lead
 
@@ -17,12 +17,7 @@ from backend.leads.models import Lead
 def create_user(
     session: Session, username: str, password: str, *, claim_unowned: bool = False
 ) -> User:
-    username = normalize_username(username)
-    if session.scalar(select(User.id).where(User.username == username)):
-        raise ValueError("That username is already in use.")
-    user = User(username=username, password_hash=hash_password(password))
-    session.add(user)
-    session.flush()
+    user = insert_user(session, username, password)
     if claim_unowned:
         # Migration leaves legacy rows hidden. Never transfer another user's leads.
         session.execute(
