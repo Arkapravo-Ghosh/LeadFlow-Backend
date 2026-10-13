@@ -55,6 +55,6 @@ def test_pinning_search_filter_and_no_duplicates(client):
     ).json()
     leads = result["leads"]
     assert [lead["id"] for lead in leads] == [ids[1], ids[0], ids[2], ids[3]]
-    assert len(set(lead["id"] for lead in leads)) == 4
+    assert len({lead["id"] for lead in leads}) == 4
     assert leads[0]["is_today"] and leads[0]["is_overdue"]
     assert leads[2]["is_overdue"] and not leads[2]["is_today"]

@@ -1,2 +1,1 @@
-def main() -> None:
-    print("Hello from backend!")
+"""LeadFlow API and database tools."""

@@ -38,7 +38,7 @@ def lead_rows(
             search.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         )
         query = query.where(Lead.name.ilike(f"%{escaped}%", escape="\\"))
-    return list(session.execute(query).tuples().all())
+    return list(session.execute(query).all())
 
 
 def latest_discussion(session: Session, lead_id: UUID) -> Discussion | None:
