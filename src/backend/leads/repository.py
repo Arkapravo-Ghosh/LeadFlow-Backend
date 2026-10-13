@@ -9,13 +9,15 @@ from backend.discussions.models import Discussion
 from backend.leads.models import Lead, LeadStatus
 
 
-def find_lead(session: Session, lead_id: UUID, *, lock: bool = False) -> Lead | None:
-    query = select(Lead).where(Lead.id == lead_id)
+def find_lead(
+    session: Session, lead_id: UUID, owner_id: UUID, *, lock: bool = False
+) -> Lead | None:
+    query = select(Lead).where(Lead.id == lead_id, Lead.owner_id == owner_id)
     return session.scalar(query.with_for_update() if lock else query)
 
 
 def lead_rows(
-    session: Session, status: LeadStatus | None = None, search: str = ""
+    session: Session, owner_id: UUID, status: LeadStatus | None = None, search: str = ""
 ) -> list[tuple[Lead, Discussion | None]]:
     """Avoid an N+1 query when presenting latest-note summaries."""
     ranked = select(
@@ -31,6 +33,7 @@ def lead_rows(
     query = select(Lead, latest).outerjoin(
         latest, (latest.lead_id == Lead.id) & (ranked.c.position == 1)
     )
+    query = query.where(Lead.owner_id == owner_id)
     if status is not None:
         query = query.where(Lead.status == status)
     if search.strip():

@@ -4,6 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter
 
+from backend.auth.dependencies import CurrentUser
 from backend.core.dependencies import Database, Now, Timezone
 from backend.discussions import repository, service
 from backend.discussions.schemas import (
@@ -17,8 +18,10 @@ router = APIRouter(prefix="/leads/{lead_id}/discussions", tags=["discussions"])
 
 
 @router.get("", response_model=list[DiscussionRead])
-def list_discussions(lead_id: UUID, session: Database) -> list[DiscussionRead]:
-    require_lead(session, lead_id)
+def list_discussions(
+    lead_id: UUID, session: Database, user: CurrentUser
+) -> list[DiscussionRead]:
+    require_lead(session, lead_id, user.id)
     return [
         DiscussionRead.model_validate(note)
         for note in repository.list_discussions(session, lead_id)
@@ -30,7 +33,8 @@ def create_discussion(
     lead_id: UUID,
     data: DiscussionCreate,
     session: Database,
+    user: CurrentUser,
     now: Now,
     timezone: Timezone,
 ) -> DiscussionSaved:
-    return service.add_discussion(session, lead_id, data, now, timezone)
+    return service.add_discussion(session, lead_id, data, user.id, now, timezone)

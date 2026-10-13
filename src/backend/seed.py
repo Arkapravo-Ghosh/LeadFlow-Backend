@@ -1,11 +1,14 @@
 """Repeatable synthetic data. Existing seed leads and user data are untouched."""
 
 from datetime import UTC, datetime, timedelta
-from uuid import NAMESPACE_URL, uuid5
+from uuid import NAMESPACE_URL, UUID, uuid5
 from zoneinfo import ZoneInfo
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from backend.auth.models import User
+from backend.auth.passwords import normalize_username
 from backend.core.clock import utc_now
 from backend.db.session import get_engine
 from backend.discussions.models import Discussion
@@ -57,14 +60,15 @@ SAMPLES = [
 ]
 
 
-def seed(session: Session, now: datetime | None = None) -> int:
+def seed(session: Session, owner_id: UUID, now: datetime | None = None) -> int:
     """Insert only absent deterministic IDs, in one transaction."""
     now = now or utc_now()
     local = now.astimezone(ZoneInfo("Asia/Kolkata"))
     inserted = 0
     for index, (name, company, status, days, note) in enumerate(SAMPLES):
-        lead_id = uuid5(NAMESPACE_URL, f"leadflow/demo/{name}")
-        if session.get(Lead, lead_id):
+        lead_id = uuid5(owner_id, f"leadflow/demo/{name}")
+        legacy = session.get(Lead, uuid5(NAMESPACE_URL, f"leadflow/demo/{name}"))
+        if session.get(Lead, lead_id) or (legacy and legacy.owner_id == owner_id):
             continue
         due = (
             (
@@ -78,6 +82,7 @@ def seed(session: Session, now: datetime | None = None) -> int:
         session.add(
             Lead(
                 id=lead_id,
+                owner_id=owner_id,
                 name=name,
                 company=company,
                 phone=f"+91 90000 0000{index}",
@@ -111,8 +116,16 @@ def seed(session: Session, now: datetime | None = None) -> int:
 
 
 def main() -> None:
+    username = normalize_username(input("Account username: "))
     with Session(get_engine()) as session:
-        print(f"Inserted {seed(session)} synthetic leads; existing data preserved.")
+        user = session.scalar(
+            select(User).where(User.username == username, User.is_active.is_(True))
+        )
+        if user is None:
+            raise SystemExit("Create an active account before seeding.")
+        print(
+            f"Inserted {seed(session, user.id)} synthetic leads; existing data preserved."
+        )
 
 
 if __name__ == "__main__":

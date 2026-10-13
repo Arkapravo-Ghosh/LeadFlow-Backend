@@ -6,7 +6,9 @@
 
 The FastAPI service for LeadFlow, using SQLAlchemy, psycopg and PostgreSQL.
 Dependencies and CLI commands are managed with uv; Alembic owns schema migrations.
-The Next.js server calls this API with a private service credential.
+The Next.js server calls this API with a private service credential plus the
+user’s opaque session. Passwords are hashed with Argon2id; lead ownership is
+enforced on every read and write.
 
 ## Run the complete app locally
 
@@ -21,10 +23,13 @@ docker compose up --build --watch
 ```
 
 Compose supplies the local database URL and credential. FastAPI and PostgreSQL have
-no published host ports. To insert six sample leads and twelve discussions:
+no published host ports. Create an account using private interactive prompts,
+then optionally insert six sample leads and twelve discussions for that account:
 
 ```sh
+docker compose exec backend uv run leadflow-create-user
 docker compose exec backend uv run leadflow-seed
+# Enter the account username for the seed.
 ```
 
 The seed is repeatable and preserves existing records. It is not run automatically
@@ -42,16 +47,20 @@ Uvicorn to Render's `PORT` on `0.0.0.0`.
 | --- | --- |
 | `DATABASE_URL` | Neon PostgreSQL connection string, preserving SSL parameters |
 | `BACKEND_API_KEY` | Private credential of at least 16 characters, shared with Vercel |
+| `AUTH_SESSION_HOURS` | Fixed session lifetime, default 12, range 1–168 |
 | `PORT` | Provided by Render; startup falls back to 8000 locally |
 
 See [.env.example](.env.example) and the parent's
 [deployment guide](https://github.com/Arkapravo-Ghosh/LeadFlow/blob/main/docs/deployment.md).
-The API is a shared assignment workspace; the service credential is not end-user login.
-Public interactive API documentation is disabled.
+Provision production accounts privately in the Render shell with
+`uv run leadflow-create-user`. Migrations never create default credentials.
+Read the parent’s [authentication guide](https://github.com/Arkapravo-Ghosh/LeadFlow/blob/main/docs/authentication.md)
+for legacy data migration and session behavior. Public interactive API documentation is disabled.
 
 ## Code structure and checks
 
 - `src/backend/main.py`: application factory and readiness route.
+- `src/backend/auth`: password policy, private provisioning, sessions, login limits and routes.
 - `src/backend/core`: configuration, credential checks, errors and clock.
 - `src/backend/db`: SQLAlchemy metadata, engine and request sessions.
 - `src/backend/leads`: routes, schemas, models, services, queries and follow-up rules.

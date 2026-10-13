@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from backend.auth.router import router as auth_router
 from backend.core.dependencies import Database
 from backend.core.errors import install_error_handlers
 from backend.core.security import verify_api_key
@@ -21,7 +22,7 @@ def create_app() -> FastAPI:
         openapi_url=None,
     )
     install_error_handlers(app)
-    for router in (leads_router, discussions_router):
+    for router in (auth_router, leads_router, discussions_router):
         app.include_router(
             router, prefix="/api/v1", dependencies=[Depends(verify_api_key)]
         )

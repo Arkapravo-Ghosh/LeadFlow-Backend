@@ -1,6 +1,7 @@
 """Migrations read the same private database configuration as the API."""
 
 from alembic import context
+from backend.auth.models import AuthSession, LoginAttempt, User  # noqa: F401
 from backend.db.base import SCHEMA, Base
 from backend.db.session import get_engine
 from backend.discussions.models import Discussion  # noqa: F401

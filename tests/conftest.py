@@ -4,6 +4,7 @@ import os
 from datetime import UTC, datetime
 
 import pytest
+from backend.auth.provision import create_user
 from backend.core.clock import utc_now
 from backend.db.session import get_session, make_engine
 from backend.main import create_app
@@ -53,10 +54,24 @@ def app(session):
 
 
 @pytest.fixture
-def client(app):
+def user(session):
+    return create_user(session, "integration-user", "integration-password-for-tests")
+
+
+@pytest.fixture
+def client(app, user):
     with TestClient(
         app,
         raise_server_exceptions=False,
         headers={"X-API-Key": os.environ["BACKEND_API_KEY"]},
     ) as client:
+        result = client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": user.username,
+                "password": "integration-password-for-tests",
+            },
+        )
+        assert result.status_code == 200
+        client.headers["Authorization"] = f"Bearer {result.json()['token']}"
         yield client

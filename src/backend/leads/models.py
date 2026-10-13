@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Enum, String
+from sqlalchemy import DateTime, Enum, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.core.clock import utc_now
@@ -24,6 +24,9 @@ class Lead(Base):
     __tablename__ = "leads"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("leadflow.users.id"), index=True
+    )
     name: Mapped[str] = mapped_column(String(120))
     company: Mapped[str | None] = mapped_column(String(120))
     phone: Mapped[str | None] = mapped_column(String(40))

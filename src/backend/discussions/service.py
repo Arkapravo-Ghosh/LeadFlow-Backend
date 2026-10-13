@@ -20,10 +20,11 @@ def add_discussion(
     session: Session,
     lead_id: UUID,
     data: DiscussionCreate,
+    owner_id: UUID,
     now: datetime,
     timezone: ZoneInfo,
 ) -> DiscussionSaved:
-    lead = require_lead(session, lead_id, lock=True)
+    lead = require_lead(session, lead_id, owner_id, lock=True)
     discussion = Discussion(
         lead_id=lead.id,
         note=data.note,

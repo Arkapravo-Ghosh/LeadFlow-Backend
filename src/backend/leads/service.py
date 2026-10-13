@@ -14,8 +14,10 @@ from backend.leads.models import Lead, LeadStatus
 from backend.leads.schemas import LeadCreate, LeadList, LeadSummary, LeadUpdate
 
 
-def require_lead(session: Session, lead_id: UUID, *, lock: bool = False) -> Lead:
-    lead = repository.find_lead(session, lead_id, lock=lock)
+def require_lead(
+    session: Session, lead_id: UUID, owner_id: UUID, *, lock: bool = False
+) -> Lead:
+    lead = repository.find_lead(session, lead_id, owner_id, lock=lock)
     if lead is None:
         raise HTTPException(status_code=404, detail="This lead could not be found.")
     return lead
@@ -42,9 +44,9 @@ def summarize(
 
 
 def get_summary(
-    session: Session, lead_id: UUID, now: datetime, timezone: ZoneInfo
+    session: Session, lead_id: UUID, owner_id: UUID, now: datetime, timezone: ZoneInfo
 ) -> LeadSummary:
-    lead = require_lead(session, lead_id)
+    lead = require_lead(session, lead_id, owner_id)
     return summarize(
         lead, repository.latest_discussion(session, lead_id), now, timezone
     )
@@ -52,6 +54,7 @@ def get_summary(
 
 def list_leads(
     session: Session,
+    owner_id: UUID,
     now: datetime,
     timezone: ZoneInfo,
     status: LeadStatus | None = None,
@@ -59,7 +62,7 @@ def list_leads(
 ) -> LeadList:
     leads = [
         summarize(lead, note, now, timezone)
-        for lead, note in repository.lead_rows(session, status, search)
+        for lead, note in repository.lead_rows(session, owner_id, status, search)
     ]
     return LeadList(
         leads=sort_leads(leads),
@@ -70,9 +73,14 @@ def list_leads(
 
 
 def create_lead(
-    session: Session, data: LeadCreate, now: datetime, timezone: ZoneInfo
+    session: Session,
+    data: LeadCreate,
+    owner_id: UUID,
+    now: datetime,
+    timezone: ZoneInfo,
 ) -> LeadSummary:
     lead = Lead(
+        owner_id=owner_id,
         name=data.name,
         company=data.company or None,
         phone=data.phone or None,
@@ -86,9 +94,14 @@ def create_lead(
 
 
 def update_lead(
-    session: Session, lead_id: UUID, data: LeadUpdate, now: datetime, timezone: ZoneInfo
+    session: Session,
+    lead_id: UUID,
+    data: LeadUpdate,
+    owner_id: UUID,
+    now: datetime,
+    timezone: ZoneInfo,
 ) -> LeadSummary:
-    lead = require_lead(session, lead_id, lock=True)
+    lead = require_lead(session, lead_id, owner_id, lock=True)
     lead.status = data.status
     lead.updated_at = now
     session.commit()
